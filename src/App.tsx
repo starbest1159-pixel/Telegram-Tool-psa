@@ -11,6 +11,8 @@ import { AddMembers } from './components/AddMembers';
 import { SearchGroups } from './components/SearchGroups';
 import { SendMessages } from './components/SendMessages';
 import { ProfileSearch, WorkHistory, ProgramSettings, Manual, About } from './components/MiscViews';
+import { AppProvider } from './context/AppContext';
+import { TelegramIcon } from './components/TelegramIcon';
 
 // --- Login Component ---
 function Login({ onLogin }: { onLogin: () => void }) {
@@ -51,7 +53,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
       <div className="bg-[#1c1c1c] p-8 rounded-xl border border-[#333] w-full max-w-md shadow-2xl">
         <div className="flex items-center justify-center mb-8 gap-3">
-          <MonitorStop className="w-8 h-8 text-blue-500" />
+          <TelegramIcon className="w-8 h-8" />
           <h1 className="text-2xl font-bold text-white">ระบบจัดการ Telegram</h1>
         </div>
         
@@ -76,6 +78,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
               className="w-full bg-[#121212] border border-[#333] text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
               placeholder="กรอกรหัสผ่าน"
             />
+            <p className="text-xs text-blue-400 mt-1">💡 รหัสผ่านคงที่ระบบ: <span className="font-mono bg-blue-950 px-1.5 py-0.5 rounded text-blue-300">psaistudio</span></p>
           </div>
           <button 
             type="submit"
@@ -85,9 +88,32 @@ function Login({ onLogin }: { onLogin: () => void }) {
             {loading ? 'กำลังตรวจสอบ...' : 'เข้าสู่ระบบ (Login)'}
           </button>
         </form>
-        <p className="text-xs text-gray-500 text-center mt-6">
-          รองรับการเข้าใช้งานหลายยูสเซอร์เนมด้วยช่องทางล๊อกอินเดียวกัน
+        <div className="mt-6 bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-lg text-xs text-yellow-300 text-center">
+          นี่คือระบบจาก PSAistudio หากท่านได้ระบบนี้จากที่อื่นแสดงว่าอาจกำลังถูกหลอก ถ้าต้องการระบบนี้จริงๆต้อง ไลน์ไอดี @255yxtaf เท่านั้น
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Warning Modal Component ---
+function WarningModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fadeIn">
+      <div className="bg-[#1e1e1e] border border-yellow-500/40 rounded-xl p-6 max-w-md w-full shadow-2xl relative text-center">
+        <div className="w-12 h-12 bg-yellow-500/20 text-yellow-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+          ⚠️
+        </div>
+        <h3 className="text-lg font-bold text-yellow-400 mb-3">ประกาศสำคัญจาก PSAistudio</h3>
+        <p className="text-gray-300 text-sm leading-relaxed mb-6 bg-[#121212] p-4 rounded-lg border border-[#333]">
+          นี่คือระบบจาก <strong className="text-white">PSAistudio</strong> หากท่านได้ระบบนี้จากที่อื่นแสดงว่าอาจกำลังถูกหลอก ถ้าต้องการระบบนี้จริงๆต้องติดต่อไลน์ไอดี <span className="text-blue-400 font-bold">@255yxtaf</span> เท่านั้น
         </p>
+        <button
+          onClick={onClose}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors text-sm"
+        >
+          รับทราบและเข้าสู่ระบบ
+        </button>
       </div>
     </div>
   );
@@ -122,7 +148,7 @@ function Sidebar({
   return (
     <div className="w-64 bg-[#1e1e1e] border-r border-[#333] flex flex-col h-screen">
       <div className="p-4 flex items-center gap-3 border-b border-[#333]">
-        <MonitorStop className="w-6 h-6 text-blue-500" />
+        <TelegramIcon className="w-6 h-6" />
         <span className="font-semibold text-gray-200">เครื่องมือดึงข้อมูล Telegram</span>
       </div>
 
@@ -192,20 +218,41 @@ function MainContent({ activeMenu }: { activeMenu: MenuKey }) {
 export default function App() {
   const [appState, setAppState] = useState<AppState>('login');
   const [activeMenu, setActiveMenu] = useState<MenuKey>('extract-data');
+  const [showWarning, setShowWarning] = useState(true);
 
   if (appState === 'login') {
-    return <Login onLogin={() => setAppState('dashboard')} />;
+    return <Login onLogin={() => { setAppState('dashboard'); setShowWarning(true); }} />;
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0a0a0a] selection:bg-blue-500/30">
-      <Sidebar 
-        activeMenu={activeMenu} 
-        onMenuChange={setActiveMenu} 
-        onLogout={() => setAppState('login')} 
-      />
-      <MainContent activeMenu={activeMenu} />
-    </div>
+    <AppProvider>
+      <div className="flex flex-col h-screen overflow-hidden bg-[#0a0a0a] selection:bg-blue-500/30">
+        {showWarning && <WarningModal onClose={() => setShowWarning(false)} />}
+        
+        {/* Permanent Watermark / Banner */}
+        <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-1.5 text-xs text-yellow-300 flex items-center justify-between z-40 select-none">
+          <div className="flex items-center gap-2">
+            <span>⚠️</span>
+            <span>นี่คือระบบจาก <strong>PSAistudio</strong> หากท่านได้ระบบนี้จากที่อื่นแสดงว่าอาจกำลังถูกหลอก ถ้าต้องการระบบนี้จริงๆต้อง ไลน์ไอดี <strong className="text-white underline">@255yxtaf</strong> เท่านั้น</span>
+          </div>
+          <button 
+            onClick={() => setShowWarning(true)} 
+            className="text-[10px] bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-200 px-2 py-0.5 rounded transition-colors"
+          >
+            แสดงประกาศ
+          </button>
+        </div>
+
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar 
+            activeMenu={activeMenu} 
+            onMenuChange={setActiveMenu} 
+            onLogout={() => setAppState('login')} 
+          />
+          <MainContent activeMenu={activeMenu} />
+        </div>
+      </div>
+    </AppProvider>
   );
 }
 

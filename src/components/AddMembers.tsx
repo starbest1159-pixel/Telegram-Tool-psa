@@ -1,9 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useAppContext } from '../context/AppContext';
 
 export function AddMembers() {
+  const { addWorkLog } = useAppContext();
+  const [targetGroup, setTargetGroup] = useState('');
+  const [delayMin, setDelayMin] = useState('10');
+  const [delayMax, setDelayMax] = useState('30');
+  const [maxLimit, setMaxLimit] = useState('40');
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const handleAddMembers = async () => {
+    if (!targetGroup) return setMsg('กรุณาระบุลิงก์กลุ่มปลายทาง');
+    
+    setLoading(true);
+    setMsg('');
+    
+    // Simulate API call
+    setTimeout(() => {
+      setLoading(false);
+      setMsg('เริ่มเพิ่มสมาชิกเรียบร้อยแล้ว');
+      addWorkLog({
+        type: 'เพิ่มสมาชิก (Add Member)',
+        target: targetGroup,
+        status: 'สำเร็จ',
+        details: `เพิ่มสมาชิกแบบหน่วงเวลา ${delayMin}-${delayMax}วิ/คน จำกัด ${maxLimit} คน`
+      });
+    }, 1500);
+  };
+
   return (
     <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#121212] text-gray-300 p-6">
       <h2 className="text-xl font-semibold text-blue-400 mb-6">เพิ่มสมาชิกเข้ากลุ่ม (Add Members)</h2>
+      {msg && <div className="mb-4 bg-blue-500/10 text-blue-400 p-3 border border-blue-500/20 rounded">{msg}</div>}
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-[#1e1e1e] border border-[#333] rounded-lg p-6">
@@ -11,7 +40,13 @@ export function AddMembers() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm text-gray-400 mb-2">ลิงก์กลุ่มปลายทาง (Target Group)</label>
-              <input type="text" placeholder="t.me/target_group" className="w-full bg-[#252525] border border-[#444] rounded text-sm px-3 py-2.5 focus:outline-none focus:border-blue-500" />
+              <input 
+                type="text" 
+                value={targetGroup}
+                onChange={(e) => setTargetGroup(e.target.value)}
+                placeholder="t.me/target_group" 
+                className="w-full bg-[#252525] border border-[#444] rounded text-sm px-3 py-2.5 focus:outline-none focus:border-blue-500" 
+              />
             </div>
             <div>
               <label className="block text-sm text-gray-400 mb-2">อัปโหลดรายชื่อ (CSV/TXT)</label>
@@ -28,17 +63,41 @@ export function AddMembers() {
             <div>
               <label className="block text-sm text-gray-400 mb-2">หน่วงเวลาต่อคน (วินาที)</label>
               <div className="flex items-center gap-2">
-                <input type="number" placeholder="10" className="w-24 bg-[#252525] border border-[#444] rounded text-sm px-3 py-2 focus:outline-none focus:border-blue-500" />
+                <input 
+                  type="number" 
+                  value={delayMin}
+                  onChange={(e) => setDelayMin(e.target.value)}
+                  placeholder="10" 
+                  className="w-24 bg-[#252525] border border-[#444] rounded text-sm px-3 py-2 focus:outline-none focus:border-blue-500" 
+                />
                 <span className="text-gray-500">ถึง</span>
-                <input type="number" placeholder="30" className="w-24 bg-[#252525] border border-[#444] rounded text-sm px-3 py-2 focus:outline-none focus:border-blue-500" />
+                <input 
+                  type="number" 
+                  value={delayMax}
+                  onChange={(e) => setDelayMax(e.target.value)}
+                  placeholder="30" 
+                  className="w-24 bg-[#252525] border border-[#444] rounded text-sm px-3 py-2 focus:outline-none focus:border-blue-500" 
+                />
               </div>
             </div>
             <div>
               <label className="block text-sm text-gray-400 mb-2">จำกัดจำนวนสูงสุดต่อบัญชี (คน)</label>
-              <input type="number" placeholder="40" className="w-full max-w-[200px] bg-[#252525] border border-[#444] rounded text-sm px-3 py-2 focus:outline-none focus:border-blue-500" />
+              <input 
+                type="number" 
+                value={maxLimit}
+                onChange={(e) => setMaxLimit(e.target.value)}
+                placeholder="40" 
+                className="w-full max-w-[200px] bg-[#252525] border border-[#444] rounded text-sm px-3 py-2 focus:outline-none focus:border-blue-500" 
+              />
             </div>
             <div className="pt-4">
-              <button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded text-sm transition-colors font-medium">เริ่มเพิ่มสมาชิก</button>
+              <button 
+                onClick={handleAddMembers}
+                disabled={loading}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-6 py-3 rounded text-sm transition-colors font-medium"
+              >
+                {loading ? 'กำลังเริ่ม...' : 'เริ่มเพิ่มสมาชิก'}
+              </button>
             </div>
           </div>
         </div>

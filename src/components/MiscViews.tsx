@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAppContext } from '../context/AppContext';
 
 export function ProfileSearch() {
   return (
@@ -12,6 +13,8 @@ export function ProfileSearch() {
 }
 
 export function WorkHistory() {
+  const { workHistory } = useAppContext();
+
   return (
     <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#121212] text-gray-300 p-6">
       <h2 className="text-xl font-semibold text-blue-400 mb-6">ประวัติการทำงาน (Work History)</h2>
@@ -28,11 +31,31 @@ export function WorkHistory() {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-gray-600 text-sm">
-                  ไม่มีประวัติการทำงาน
-                </td>
-              </tr>
+              {workHistory.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-12 text-center text-gray-600 text-sm">
+                    ไม่มีประวัติการทำงาน
+                  </td>
+                </tr>
+              ) : (
+                workHistory.map((log) => (
+                  <tr key={log.id} className="border-b border-[#222] hover:bg-[#1a1a1a]">
+                    <td className="px-4 py-3 whitespace-nowrap">{log.timestamp}</td>
+                    <td className="px-4 py-3 text-blue-400">{log.type}</td>
+                    <td className="px-4 py-3">{log.target}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        log.status === 'สำเร็จ' ? 'bg-green-500/10 text-green-400' :
+                        log.status === 'กำลังดำเนินการ' ? 'bg-amber-500/10 text-amber-400' :
+                        'bg-red-500/10 text-red-400'
+                      }`}>
+                        {log.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-400">{log.details}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

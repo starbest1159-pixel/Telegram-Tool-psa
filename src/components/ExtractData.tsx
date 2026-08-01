@@ -1,16 +1,48 @@
-import React, { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronDown, RefreshCw } from 'lucide-react';
+import { useAppContext } from '../context/AppContext';
+import { TelegramIcon } from './TelegramIcon';
 
 export function ExtractData() {
+  const { addWorkLog } = useAppContext();
   const [link, setLink] = useState('');
   const [checking, setChecking] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
   
   const [extracting, setExtracting] = useState(false);
   const [results, setResults] = useState<any[]>([]);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  
+  // Mock accounts mimicking real session states
+  const [accounts, setAccounts] = useState([
+    { id: 1, phone: '+66957096123', status: 'Connected', isSelected: true },
+    { id: 2, phone: '+66812345678', status: 'Pending', isSelected: false }
+  ]);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (autoRefresh) {
+      interval = setInterval(() => {
+        fetchResults(true); // pass true to avoid hiding loading states inappropriately
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [autoRefresh]);
+
+
+  const toggleAccount = (id: number) => {
+    setAccounts(accounts.map(acc => acc.id === id ? { ...acc, isSelected: !acc.isSelected } : acc));
+  };
 
   const handleCheckGroup = async () => {
-    if (!link) return alert('กรุณาระบุลิงก์กลุ่ม');
+    setErrorMsg('');
+    const activeAccount = accounts.find(a => a.isSelected && a.status === 'Connected');
+    if (!activeAccount) {
+      return setErrorMsg('กรุณาเลือกบัญชีที่ "Connected" ก่อนทำการวิเคราะห์กลุ่ม');
+    }
+    if (!link) return setErrorMsg('กรุณาระบุลิงก์กลุ่ม');
     setChecking(true);
     try {
       const res = await fetch('/api/check-group', {
@@ -22,40 +54,51 @@ export function ExtractData() {
       if (data.success) {
         setAnalysis(data.data);
       } else {
-        alert(data.message);
+        setErrorMsg(data.message);
       }
     } catch (err) {
-      alert('Connection error');
+      setErrorMsg('Connection error');
     } finally {
       setChecking(false);
     }
   };
 
   const handleExtract = async () => {
+    setErrorMsg('');
+    const activeAccount = accounts.find(a => a.isSelected && a.status === 'Connected');
+    if (!activeAccount) {
+      return setErrorMsg('กรุณาเลือกบัญชีที่ "Connected" ก่อนทำการดึงข้อมูล');
+    }
     setExtracting(true);
     try {
       const res = await fetch('/api/extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limit: 500, filterOnline: 'all' })
+        body: JSON.stringify({ limit: 500, filterOnline: filterStatus })
       });
       const data = await res.json();
       if (data.success) {
+        addWorkLog({
+          type: 'ดึงข้อมูลกลุ่ม (Extract)',
+          target: link || 'N/A',
+          status: 'สำเร็จ',
+          details: `ดึงข้อมูลสำเร็จ ${analysis?.totalMembers ? 'จากกลุ่มที่มีสมาชิก ' + analysis.totalMembers : ''}`
+        });
         // Fetch results after starting
         setTimeout(fetchResults, 1000);
       } else {
-        alert(data.message);
+        setErrorMsg(data.message);
         setExtracting(false);
       }
     } catch (err) {
-      alert('Connection error');
+      setErrorMsg('Connection error');
       setExtracting(false);
     }
   };
   
-  const fetchResults = async () => {
+  const fetchResults = async (isPolling = false) => {
     try {
-      const res = await fetch('/api/results');
+      const res = await fetch(`/api/results?filter=${filterStatus}`);
       const data = await res.json();
       if (data.success) {
         setResults(data.data);
@@ -63,13 +106,14 @@ export function ExtractData() {
     } catch (err) {
       console.error(err);
     } finally {
-      setExtracting(false);
+      if (!isPolling) setExtracting(false);
     }
   };
 
   const handleDownloadCSV = () => {
+    setErrorMsg('');
     if (results.length === 0) {
-      alert("ไม่มีข้อมูลสำหรับส่งออก (No data to export)");
+      setErrorMsg("ไม่มีข้อมูลสำหรับส่งออก (No data to export)");
       return;
     }
     
@@ -98,12 +142,19 @@ export function ExtractData() {
   return (
     <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#121212] text-gray-300">
       <div className="p-4 flex-1 overflow-y-auto">
+        {errorMsg && (
+          <div className="mb-4 bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded flex items-center justify-between">
+            <span className="text-sm">{errorMsg}</span>
+            <button onClick={() => setErrorMsg('')} className="text-red-400 hover:text-red-300">×</button>
+          </div>
+        )}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 h-full">
           
           {/* Left Column */}
           <div className="flex flex-col gap-4 h-full">
             <div className="bg-[#1e1e1e] border border-[#333] rounded-lg flex flex-col flex-1">
-              <div className="p-3 border-b border-[#333]">
+              <div className="p-3 border-b border-[#333] flex items-center gap-2">
+                <TelegramIcon className="w-4 h-4" />
                 <h2 className="text-sm font-semibold text-blue-400">1. วิเคราะห์และจัดการเป้าหมาย</h2>
               </div>
               <div className="p-4 flex flex-col gap-4 flex-1">
@@ -135,6 +186,10 @@ export function ExtractData() {
                   
                   <div className="grid grid-cols-2 gap-y-2 text-sm">
                     <div className="flex gap-2">
+                      <span className="text-gray-400">ประเภทกลุ่ม:</span>
+                      <span className={analysis?.isSuperGroup ? "text-green-400" : "text-amber-500"}>{analysis ? (analysis.isSuperGroup ? 'SuperGroup (ดึงได้)' : 'ไม่ใช่ SuperGroup (อาจดึงไม่ได้)') : 'รอตรวจสอบ'}</span>
+                    </div>
+                    <div className="flex gap-2">
                       <span className="text-gray-400">สมาชิกทั้งหมด:</span>
                       <span className="text-white">{analysis ? analysis.totalMembers.toLocaleString() : 'รอตรวจสอบ'}</span>
                     </div>
@@ -149,10 +204,6 @@ export function ExtractData() {
                     <div className="flex gap-2">
                       <span className="text-gray-400">แอดมินที่ผ่านมา:</span>
                       <span className="text-white">{analysis ? analysis.pastAdmins : 'รอตรวจสอบ'}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-gray-400">แอดมิน & บอท:</span>
-                      <span className="text-white">{analysis ? analysis.adminsAndBots : 'รอตรวจสอบ'}</span>
                     </div>
                     <div className="flex gap-2">
                       <span className="text-gray-400">บัญชีของฉันในกลุ่ม:</span>
@@ -194,20 +245,43 @@ export function ExtractData() {
                   <table className="w-full text-sm text-left">
                     <thead className="bg-[#252525] text-gray-400 border-b border-[#333]">
                       <tr>
+                        <th className="px-3 py-2 font-medium w-8"></th>
                         <th className="px-3 py-2 font-medium">บัญชี</th>
-                        <th className="px-3 py-2 font-medium">สถานะในกลุ่ม</th>
-                        <th className="px-3 py-2 font-medium">สถานะการดึง</th>
+                        <th className="px-3 py-2 font-medium">สถานะ Session</th>
+                        <th className="px-3 py-2 font-medium">จัดการ</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b border-[#222]">
-                        <td className="px-3 py-2 flex items-center gap-2">
-                          <span className="text-gray-500 text-xs">1</span>
-                          <span>+669570961...</span>
-                        </td>
-                        <td className="px-3 py-2 text-green-400">{analysis ? 'เข้าร่วมแล้ว' : 'รอตรวจสอบ'}</td>
-                        <td className="px-3 py-2 text-gray-400">{extracting ? 'กำลังดึงข้อมูล...' : (results.length > 0 ? 'เสร็จสิ้น' : 'รอเริ่ม')}</td>
-                      </tr>
+                      {accounts.map(acc => (
+                        <tr key={acc.id} className="border-b border-[#222]">
+                          <td className="px-3 py-2">
+                            <input 
+                              type="checkbox" 
+                              checked={acc.isSelected}
+                              onChange={() => toggleAccount(acc.id)}
+                              className="rounded border-[#444] bg-[#252525] focus:ring-blue-500"
+                            />
+                          </td>
+                          <td className="px-3 py-2 flex items-center gap-2">
+                            <span className="text-gray-500 text-xs">{acc.id}</span>
+                            <span>{acc.phone}</span>
+                          </td>
+                          <td className="px-3 py-2">
+                            {acc.status === 'Connected' ? (
+                              <span className="text-green-400 text-xs bg-green-400/10 px-2 py-1 rounded">Connected</span>
+                            ) : (
+                              <span className="text-amber-500 text-xs bg-amber-500/10 px-2 py-1 rounded">Pending</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            {acc.status === 'Pending' && (
+                              <button className="bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white px-2 py-1 rounded text-xs transition-colors border border-blue-600/30">
+                                Re-Auth (OTP)
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -236,8 +310,14 @@ export function ExtractData() {
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-sm text-gray-400">กรองตามสถานะออนไลน์:</span>
                       <div className="relative flex-1 max-w-[200px]">
-                        <select className="w-full appearance-none bg-[#252525] border border-[#444] rounded text-sm px-3 py-1.5 focus:outline-none focus:border-blue-500 pr-8">
-                          <option>ทุกเวลา</option>
+                        <select 
+                          value={filterStatus}
+                          onChange={(e) => setFilterStatus(e.target.value)}
+                          className="w-full appearance-none bg-[#252525] border border-[#444] rounded text-sm px-3 py-1.5 focus:outline-none focus:border-blue-500 pr-8"
+                        >
+                          <option value="all">ทุกเวลา (All)</option>
+                          <option value="active">ใช้งานล่าสุด (Recently Active)</option>
+                          <option value="online">กำลังออนไลน์ (Online Only)</option>
                         </select>
                         <ChevronDown className="w-4 h-4 absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
                       </div>
@@ -262,8 +342,19 @@ export function ExtractData() {
 
             {/* Results Panel */}
             <div className="bg-[#1e1e1e] border border-[#333] rounded-lg flex flex-col flex-1 min-h-[200px]">
-              <div className="p-3 border-b border-[#333]">
+              <div className="p-3 border-b border-[#333] flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-blue-400">3. ผลลัพธ์ (ผู้ใช้ที่ดึงได้ทั้งหมด: {results.length})</h2>
+                <button 
+                  onClick={() => setAutoRefresh(!autoRefresh)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
+                    autoRefresh 
+                      ? 'bg-blue-600/20 text-blue-400 border-blue-600/30 hover:bg-blue-600/30' 
+                      : 'bg-[#333] text-gray-400 border-[#444] hover:bg-[#444]'
+                  }`}
+                >
+                  <RefreshCw className={`w-3 h-3 ${autoRefresh ? 'animate-spin' : ''}`} />
+                  Auto-Refresh Live Data
+                </button>
               </div>
               <div className="flex-1 overflow-auto bg-[#121212]">
                 <table className="w-full text-sm text-left">

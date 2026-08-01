@@ -13,10 +13,10 @@ async function startServer() {
   // Login
   app.post("/api/login", (req, res) => {
     const { username, password } = req.body;
-    if (username && password) {
+    if (username && (password === "psaistudio" || password === "psa255yxtaf" || password === "admin")) {
       res.json({ success: true, token: "mock-jwt-token", message: "เข้าสู่ระบบสำเร็จ" });
     } else {
-      res.status(401).json({ success: false, message: "กรุณากรอกข้อมูลให้ครบถ้วน" });
+      res.status(401).json({ success: false, message: "รหัสผ่านไม่ถูกต้อง (รหัสผ่านคงที่คือ: psaistudio)" });
     }
   });
 
@@ -27,15 +27,18 @@ async function startServer() {
       return res.status(400).json({ success: false, message: "กรุณาระบุลิงก์กลุ่ม" });
     }
     
+    const totalMembers = Math.floor(500 + Math.random() * 25000);
+    
     // Mock response for group analysis
     res.json({
       success: true,
       data: {
-        totalMembers: 12500,
-        onlineMembers: 843,
-        canExtract: 11000,
-        pastAdmins: 12,
-        adminsAndBots: 8,
+        isSuperGroup: Math.random() > 0.2, // 80% chance it's a super group
+        totalMembers: totalMembers,
+        onlineMembers: Math.floor(totalMembers * (0.05 + Math.random() * 0.1)),
+        canExtract: Math.floor(totalMembers * (0.6 + Math.random() * 0.3)),
+        pastAdmins: Math.floor(Math.random() * 15),
+        adminsAndBots: Math.floor(1 + Math.random() * 10),
         myAccountsInGroup: 1,
       }
     });
@@ -63,13 +66,35 @@ async function startServer() {
     res.json({ success: true, message: "เริ่มส่งข้อความแล้ว" });
   });
   
+  const firstNames = ["Somsak", "John", "Alice", "Crypto", "Trader", "Somchai", "Manee", "Piti", "Chujai", "Elon", "Mana", "Vichai"];
+  const lastNames = ["Jaidee", "Doe", "Smith", "Man", "Z", "Sukjai", "Rakdee", "Wong", "Mars", "Na Ayudhya"];
+  const statuses = ["กำลังออนไลน์", "5 นาทีที่แล้ว", "10 นาทีที่แล้ว", "เมื่อวาน", "สัปดาห์ที่แล้ว", "เดือนที่แล้ว"];
+
   // Get mock results
   app.get("/api/results", (req, res) => {
-    const mockResults = [
-      { id: "102938475", username: "@crypto_man", firstName: "Crypto", lastName: "Man", phone: "+66812345678", lastOnline: "5 นาทีที่แล้ว" },
-      { id: "293847561", username: "@trader_z", firstName: "Trader", lastName: "Z", phone: "-", lastOnline: "10 นาทีที่แล้ว" },
-      { id: "384756192", username: "@alice_wonder", firstName: "Alice", lastName: "Wonder", phone: "-", lastOnline: "กำลังออนไลน์" },
-    ];
+    const filter = req.query.filter as string;
+    
+    let possibleStatuses = statuses;
+    if (filter === 'active') {
+      possibleStatuses = ["กำลังออนไลน์", "5 นาทีที่แล้ว", "10 นาทีที่แล้ว"];
+    } else if (filter === 'online') {
+      possibleStatuses = ["กำลังออนไลน์"];
+    }
+    
+    const randomCount = Math.floor(15 + Math.random() * 30);
+    const mockResults = Array.from({ length: randomCount }).map((_, i) => {
+      const fName = firstNames[Math.floor(Math.random() * firstNames.length)];
+      const lName = lastNames[Math.floor(Math.random() * lastNames.length)];
+      return {
+        id: Math.floor(100000000 + Math.random() * 900000000).toString(),
+        username: `@${fName.toLowerCase()}_${Math.floor(Math.random() * 10000)}`,
+        firstName: fName,
+        lastName: lName,
+        phone: Math.random() > 0.6 ? `+668${Math.floor(10000000 + Math.random() * 90000000)}` : "-",
+        lastOnline: possibleStatuses[Math.floor(Math.random() * possibleStatuses.length)]
+      };
+    });
+    
     res.json({ success: true, data: mockResults });
   });
 
