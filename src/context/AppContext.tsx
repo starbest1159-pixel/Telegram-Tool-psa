@@ -9,15 +9,48 @@ export interface WorkLog {
   details: string;
 }
 
+export interface TelegramSession {
+  id: string;
+  phone: string;
+  name: string;
+  status: 'Connected' | 'Pending' | 'Disconnected';
+  isSelected: boolean;
+}
+
 interface AppContextType {
   workHistory: WorkLog[];
   addWorkLog: (log: Omit<WorkLog, 'id' | 'timestamp'>) => void;
+  sessions: TelegramSession[];
+  addSession: (phone: string, name?: string) => TelegramSession;
+  removeSession: (id: string) => void;
+  toggleSelectSession: (id: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [workHistory, setWorkHistory] = useState<WorkLog[]>([]);
+  const [sessions, setSessions] = useState<TelegramSession[]>([]);
+
+  const addSession = (phone: string, name?: string): TelegramSession => {
+    const newSession: TelegramSession = {
+      id: `sess-${Date.now()}`,
+      phone: phone.trim(),
+      name: name?.trim() || `Session_${sessions.length + 1}`,
+      status: 'Connected',
+      isSelected: true
+    };
+    setSessions(prev => [...prev, newSession]);
+    return newSession;
+  };
+
+  const removeSession = (id: string) => {
+    setSessions(prev => prev.filter(s => s.id !== id));
+  };
+
+  const toggleSelectSession = (id: string) => {
+    setSessions(prev => prev.map(s => s.id === id ? { ...s, isSelected: !s.isSelected } : s));
+  };
 
   const addWorkLog = (log: Omit<WorkLog, 'id' | 'timestamp'>) => {
     const newLog: WorkLog = {
@@ -32,7 +65,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AppContext.Provider value={{ workHistory, addWorkLog }}>
+    <AppContext.Provider value={{ 
+      workHistory, 
+      addWorkLog, 
+      sessions, 
+      addSession, 
+      removeSession, 
+      toggleSelectSession 
+    }}>
       {children}
     </AppContext.Provider>
   );

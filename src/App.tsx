@@ -98,6 +98,16 @@ function Login({ onLogin }: { onLogin: () => void }) {
 
 // --- Warning Modal Component ---
 function WarningModal({ onClose }: { onClose: () => void }) {
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fadeIn">
       <div className="bg-[#1e1e1e] border border-yellow-500/40 rounded-xl p-6 max-w-md w-full shadow-2xl relative text-center">
@@ -110,9 +120,10 @@ function WarningModal({ onClose }: { onClose: () => void }) {
         </p>
         <button
           onClick={onClose}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors text-sm"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors text-sm flex items-center justify-center gap-2 cursor-pointer shadow-md"
         >
-          รับทราบและเข้าสู่ระบบ
+          <span>รับทราบและเข้าสู่ระบบ</span>
+          <kbd className="hidden sm:inline-block bg-blue-800 text-blue-200 text-[10px] px-1.5 py-0.5 rounded font-mono">Esc / Enter</kbd>
         </button>
       </div>
     </div>
@@ -129,13 +140,13 @@ function Sidebar({
   onMenuChange: (key: MenuKey) => void;
   onLogout: () => void; 
 }) {
-  const menuItems: { icon: any; label: string; key: MenuKey }[] = [
-    { icon: Globe, label: 'ตั้งค่า Proxy', key: 'proxy' },
-    { icon: UserPlus, label: 'เพิ่มสมาชิกเข้ากลุ่ม', key: 'add-members' },
-    { icon: Users, label: 'ดึงข้อมูลกลุ่ม', key: 'extract-data' },
-    { icon: Search, label: 'ค้นหากลุ่ม', key: 'search-groups' },
-    { icon: Send, label: 'ส่งข้อความ', key: 'send-messages' },
-    { icon: UserSquare, label: 'โปรไฟล์และค้นหาชื่อ', key: 'profile-search' },
+  const menuItems: { icon: any; label: string; key: MenuKey; keynum: string }[] = [
+    { icon: Globe, label: 'ตั้งค่า Proxy', key: 'proxy', keynum: '1' },
+    { icon: UserPlus, label: 'เพิ่มสมาชิกเข้ากลุ่ม', key: 'add-members', keynum: '2' },
+    { icon: Users, label: 'ดึงข้อมูลกลุ่ม', key: 'extract-data', keynum: '3' },
+    { icon: Search, label: 'ค้นหากลุ่ม', key: 'search-groups', keynum: '4' },
+    { icon: Send, label: 'ส่งข้อความ', key: 'send-messages', keynum: '5' },
+    { icon: UserSquare, label: 'โปรไฟล์และค้นหาชื่อ', key: 'profile-search', keynum: '6' },
   ];
 
   const bottomItems: { icon: any; label: string; key: MenuKey }[] = [
@@ -145,23 +156,53 @@ function Sidebar({
     { icon: Info, label: 'เกี่ยวกับโปรแกรม', key: 'about' },
   ];
 
+  // Desktop Keyboard Shortcuts (Alt + 1..6)
+  React.useEffect(() => {
+    const handleGlobalShortcuts = (e: KeyboardEvent) => {
+      if (e.altKey && !e.ctrlKey && !e.shiftKey) {
+        if (e.key === '1') onMenuChange('proxy');
+        if (e.key === '2') onMenuChange('add-members');
+        if (e.key === '3') onMenuChange('extract-data');
+        if (e.key === '4') onMenuChange('search-groups');
+        if (e.key === '5') onMenuChange('send-messages');
+        if (e.key === '6') onMenuChange('profile-search');
+      }
+    };
+    window.addEventListener('keydown', handleGlobalShortcuts);
+    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
+  }, [onMenuChange]);
+
   return (
-    <div className="w-64 bg-[#1e1e1e] border-r border-[#333] flex flex-col h-screen">
+    <div className="w-64 bg-[#1e1e1e] border-r border-[#333] flex flex-col h-screen select-none">
       <div className="p-4 flex items-center gap-3 border-b border-[#333]">
         <TelegramIcon className="w-6 h-6" />
-        <span className="font-semibold text-gray-200">เครื่องมือดึงข้อมูล Telegram</span>
+        <span className="font-semibold text-gray-200 text-sm">เครื่องมือดึงข้อมูล Telegram</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-4">
+      <div className="flex-1 overflow-y-auto py-3">
+        <div className="px-3 mb-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider flex justify-between items-center">
+          <span>เมนูหลัก (Core Features)</span>
+          <span className="text-[9px] text-gray-600 font-mono hidden sm:inline">Alt + [1-6]</span>
+        </div>
         <ul className="space-y-1 px-2">
           {menuItems.map((item) => (
             <li key={item.key}>
               <button 
                 onClick={() => onMenuChange(item.key)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${activeMenu === item.key ? 'bg-[#2a2a2a] text-blue-400' : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-gray-200'}`}
+                title={`คลิกเพื่อสลับ หรือกด Alt+${item.keynum}`}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all cursor-pointer ${
+                  activeMenu === item.key 
+                    ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 font-medium' 
+                    : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-gray-200'
+                }`}
               >
-                <item.icon className="w-4 h-4" />
-                {item.label}
+                <div className="flex items-center gap-2.5">
+                  <item.icon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                </div>
+                <kbd className="text-[10px] bg-[#121212] border border-[#333] text-gray-500 px-1.5 py-0.5 rounded font-mono group-hover:text-gray-300">
+                  Alt+{item.keynum}
+                </kbd>
               </button>
             </li>
           ))}
@@ -169,28 +210,39 @@ function Sidebar({
 
         <hr className="border-[#333] my-4 mx-4" />
 
+        <div className="px-3 mb-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+          <span>ระบบและการตั้งค่า</span>
+        </div>
         <ul className="space-y-1 px-2">
           {bottomItems.map((item) => (
             <li key={item.key}>
               <button 
                 onClick={() => onMenuChange(item.key)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${activeMenu === item.key ? 'bg-[#2a2a2a] text-blue-400' : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-gray-200'}`}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all cursor-pointer ${
+                  activeMenu === item.key 
+                    ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 font-medium' 
+                    : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-gray-200'
+                }`}
               >
                 <item.icon className="w-4 h-4" />
-                {item.label}
+                <span>{item.label}</span>
               </button>
             </li>
           ))}
         </ul>
       </div>
 
-      <div className="p-4 border-t border-[#333]">
+      <div className="p-3 border-t border-[#333] bg-[#1a1a1a]">
         <button 
           onClick={onLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-red-400 hover:bg-red-400/10 transition-colors"
+          title="ออกจากระบบ"
+          className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors cursor-pointer"
         >
-          <LogOut className="w-4 h-4" />
-          ออกจากระบบ
+          <div className="flex items-center gap-2">
+            <LogOut className="w-4 h-4" />
+            <span>ออกจากระบบ</span>
+          </div>
+          <span className="text-[10px] text-gray-500">PC User</span>
         </button>
       </div>
     </div>

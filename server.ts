@@ -55,6 +55,107 @@ async function startServer() {
     });
   });
 
+  // Admin Groups & Admin Rights Check for Adding Members
+  const initialAdminGroups: any[] = [];
+
+  let adminGroups = [...initialAdminGroups];
+
+  app.get("/api/my-admin-groups", (req, res) => {
+    res.json({ success: true, data: adminGroups });
+  });
+
+  app.post("/api/check-admin-status", (req, res) => {
+    const { link, sessionPhone } = req.body;
+    if (!link) {
+      return res.status(400).json({ success: false, message: "กรุณาระบุลิงก์กลุ่มเพื่อตรวจสอบสิทธิ์" });
+    }
+
+    const cleanLink = link.trim().replace(/^https?:\/\//, '').toLowerCase();
+    
+    // Check if group is in user's known admin list
+    const found = adminGroups.find(g => 
+      cleanLink.includes(g.link.replace(/^https?:\/\//, '').toLowerCase()) ||
+      g.link.replace(/^https?:\/\//, '').toLowerCase().includes(cleanLink)
+    );
+
+    if (found) {
+      return res.json({
+        success: true,
+        isAdmin: true,
+        role: found.role,
+        roleLabel: found.roleLabel,
+        canInviteUsers: found.canInviteUsers,
+        title: found.title,
+        link: found.link,
+        memberCount: found.memberCount,
+        permissions: {
+          can_invite_users: true,
+          can_manage_chat: true,
+          can_delete_messages: found.canDeleteMessages,
+          can_change_info: found.canChangeInfo
+        },
+        message: "✅ ตรวจสอบสิทธิ์สำเร็จ: คุณเป็นแอดมินกลุ่มนี้ มีสิทธิ์ดึงสมาชิกเข้ากลุ่มได้อย่างปลอดภัย"
+      });
+    }
+
+    // If it's another group, check if it specifies admin keyword or simulate realistic Telegram permission check
+    const isLikelyAdmin = cleanLink.includes('admin') || cleanLink.includes('vip') || cleanLink.includes('mygroup') || cleanLink.includes('test');
+    
+    if (isLikelyAdmin) {
+      const newAdminGroup = {
+        id: `grp-${Date.now()}`,
+        title: `กลุ่มที่ดูแล (${cleanLink})`,
+        link: cleanLink.startsWith('t.me/') ? cleanLink : `t.me/${cleanLink.replace(/^@/, '')}`,
+        role: "administrator",
+        roleLabel: "🛡️ ผู้ดูแลระบบ (Administrator)",
+        canInviteUsers: true,
+        canChangeInfo: false,
+        canDeleteMessages: true,
+        memberCount: Math.floor(100 + Math.random() * 2000),
+        adminSince: new Date().toISOString().split('T')[0],
+        phoneOwner: sessionPhone || "+66957096123"
+      };
+      adminGroups.push(newAdminGroup);
+
+      return res.json({
+        success: true,
+        isAdmin: true,
+        role: newAdminGroup.role,
+        roleLabel: newAdminGroup.roleLabel,
+        canInviteUsers: true,
+        title: newAdminGroup.title,
+        link: newAdminGroup.link,
+        memberCount: newAdminGroup.memberCount,
+        permissions: {
+          can_invite_users: true,
+          can_manage_chat: true,
+          can_delete_messages: true,
+          can_change_info: false
+        },
+        message: "✅ ยืนยันสิทธิ์แอดมินสำเร็จ! เพิ่มกลุ่มนี้เข้าสู่คลังกลุ่มที่คุณดูแลแล้ว"
+      });
+    }
+
+    // Default: Not an admin
+    return res.json({
+      success: true,
+      isAdmin: false,
+      role: "member",
+      roleLabel: "👤 สมาชิกทั่วไป (Regular Member)",
+      canInviteUsers: false,
+      title: `กลุ่มทั่วไป (${cleanLink})`,
+      link: cleanLink,
+      memberCount: Math.floor(1000 + Math.random() * 15000),
+      permissions: {
+        can_invite_users: false,
+        can_manage_chat: false,
+        can_delete_messages: false,
+        can_change_info: false
+      },
+      message: "❌ CHAT_ADMIN_REQUIRED: คุณไม่ได้เป็นแอดมินของกลุ่มนี้ ตามกฎของ Telegram คุณไม่สามารถเพิ่มสมาชิกเข้ากลุ่มของผู้อื่นได้"
+    });
+  });
+
   // Proxy Settings
   app.post("/api/proxy", (req, res) => {
     // Mock save proxy
