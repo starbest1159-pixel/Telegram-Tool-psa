@@ -28,7 +28,7 @@ export function ProxySettings() {
       address: newAddress,
       status: 'ใช้งานอยู่ (Active)',
       ping: `${Math.floor(20 + Math.random() * 80)}ms`,
-      country: 'TH 🇹🇭'
+      country: 'Thailand (TH)'
     };
 
     setProxyList(prev => [newProxy, ...prev.map(p => ({ ...p, status: 'พร้อมใช้งาน (Ready)' }))]);
@@ -49,7 +49,7 @@ export function ProxySettings() {
     setTimeout(() => {
       setTesting(false);
       const randomPing = Math.floor(25 + Math.random() * 60);
-      setMsg(`✔ การเชื่อมต่อ Proxy ${host}:${port} สำเร็จ! ความเร็วตอบสนอง (Latency): ${randomPing}ms`);
+      setMsg(`การเชื่อมต่อ Proxy ${host}:${port} สำเร็จ! ความเร็วตอบสนอง (Latency): ${randomPing}ms`);
       addWorkLog({
         type: 'ทดสอบ Proxy',
         target: `${host}:${port}`,
@@ -195,7 +195,7 @@ export function ProxySettings() {
                 }}
                 className="rounded border-[#444] bg-[#252525] text-blue-500 focus:ring-blue-500"
               />
-              <span>🔄 เปิดใช้งาน Proxy Rotation อัตโนมัติ</span>
+              <span>เปิดใช้งาน Proxy Rotation อัตโนมัติ</span>
             </label>
 
             <div className="flex items-center gap-3">

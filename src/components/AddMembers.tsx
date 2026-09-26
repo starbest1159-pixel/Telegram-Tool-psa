@@ -37,7 +37,7 @@ interface AdminCheckResult {
 }
 
 export function AddMembers() {
-  const { addWorkLog, sessions, addSession } = useAppContext();
+  const { addWorkLog, sessions, addSession, navigateToExtractGroup } = useAppContext();
 
   const [selectedSessionId, setSelectedSessionId] = useState(sessions[0]?.id || '');
 
@@ -99,7 +99,7 @@ export function AddMembers() {
             can_delete_messages: true,
             can_change_info: true
           },
-          message: '✅ ยืนยันสิทธิ์แอดมิน: คุณเป็นผู้ดูแลกลุ่มนี้ มีสิทธิ์ดึงสมาชิกเข้ากลุ่มได้อย่างปลอดภัย'
+          message: 'ยืนยันสิทธิ์แอดมิน: คุณเป็นผู้ดูแลกลุ่มนี้ มีสิทธิ์ดึงสมาชิกเข้ากลุ่มได้อย่างปลอดภัย'
         });
       } else {
         setAdminGroups([]);
@@ -130,7 +130,7 @@ export function AddMembers() {
         can_delete_messages: true,
         can_change_info: group.role === 'creator'
       },
-      message: '✅ ยืนยันสิทธิ์แอดมิน: คุณเป็นผู้ดูแลกลุ่มนี้ มีสิทธิ์ดึงสมาชิกเข้ากลุ่มได้อย่างปลอดภัย'
+      message: 'ยืนยันสิทธิ์แอดมิน: คุณเป็นผู้ดูแลกลุ่มนี้ มีสิทธิ์ดึงสมาชิกเข้ากลุ่มได้อย่างปลอดภัย'
     });
   };
 
@@ -161,9 +161,9 @@ export function AddMembers() {
         setAdminVerification(data);
         setSelectedGroupLink(target);
         if (data.isAdmin) {
-          setMsg(data.message || '✅ ยืนยันสิทธิ์แอดมินสำเร็จ! คุณมีสิทธิ์เพิ่มสมาชิกเข้ากลุ่มนี้');
+          setMsg(data.message || 'ยืนยันสิทธิ์แอดมินสำเร็จ! คุณมีสิทธิ์เพิ่มสมาชิกเข้ากลุ่มนี้');
         } else {
-          setErrorBanner(data.message || '❌ ไม่อนุญาต: คุณไม่ได้เป็นแอดมินของกลุ่มนี้ ระบบบล็อกเพื่อความปลอดภัย');
+          setErrorBanner(data.message || 'ไม่อนุญาต: คุณไม่ได้เป็นแอดมินของกลุ่มนี้ ระบบบล็อกเพื่อความปลอดภัย');
         }
       } else {
         setErrorBanner(data.message || 'ไม่สามารถตรวจสอบสิทธิ์ได้');
@@ -208,7 +208,7 @@ export function AddMembers() {
     // STRICT ADMIN VALIDATION:
     // User can ONLY add members to groups where they are confirmed Admin or Owner
     if (!adminVerification || !adminVerification.isAdmin || !adminVerification.canInviteUsers) {
-      setErrorBanner('⛔ ไม่อนุญาตให้ทำรายการ: Telegram อนุญาตให้เพิ่มสมาชิกได้เฉพาะกลุ่มที่คุณเป็น "แอดมิน (Admin)" หรือ "เจ้าของกลุ่ม (Owner)" เท่านั้น! หากฝืนทำจะทำให้บัญชีถูก Telegram แบนทันที (CHAT_ADMIN_REQUIRED)');
+      setErrorBanner('ไม่อนุญาตให้ทำรายการ: Telegram อนุญาตให้เพิ่มสมาชิกได้เฉพาะกลุ่มที่คุณเป็น "แอดมิน (Admin)" หรือ "เจ้าของกลุ่ม (Owner)" เท่านั้น! หากฝืนทำจะทำให้บัญชีถูก Telegram แบนทันที (CHAT_ADMIN_REQUIRED)');
       return;
     }
 
@@ -220,10 +220,10 @@ export function AddMembers() {
     setLoading(true);
     setProgress(0);
     setStatusLog([
-      '🛡️ กำลังตรวจสอบสิทธิ์ Telegram API: Check Chat Member Permissions...',
-      `👑 ตรวจพบสิทธิ์: ${adminVerification.roleLabel} (สิทธิ์ can_invite_users: เปิดใช้งาน)`,
-      `🎯 กลุ่มเป้าหมาย: ${adminVerification.title} (${selectedGroupLink})`,
-      '🚀 เริ่มต้นกระบวนการเพิ่มสมาชิกเข้ากลุ่มอย่างปลอดภัย...'
+      'กำลังตรวจสอบสิทธิ์ Telegram API: Check Chat Member Permissions...',
+      `ตรวจพบสิทธิ์: ${adminVerification.roleLabel} (สิทธิ์ can_invite_users: เปิดใช้งาน)`,
+      `กลุ่มเป้าหมาย: ${adminVerification.title} (${selectedGroupLink})`,
+      'เริ่มต้นกระบวนการเพิ่มสมาชิกเข้ากลุ่มอย่างปลอดภัย...'
     ]);
     setMsg('');
 
@@ -239,14 +239,14 @@ export function AddMembers() {
       const delaySec = Math.floor(Number(delayMin) + Math.random() * (Number(delayMax) - Number(delayMin) + 1));
       
       setStatusLog(prev => [
-        `✔ เพิ่ม ${addedUser} เข้ากลุ่มสำเร็จ [Status: 200 OK | หน่วงเวลา ${delaySec}s]`,
+        `เพิ่ม ${addedUser} เข้ากลุ่มสำเร็จ [Status: 200 OK | หน่วงเวลา ${delaySec}s]`,
         ...prev
       ]);
 
       if (current >= totalToAdd) {
         clearInterval(interval);
         setLoading(false);
-        setMsg(`✨ ทำรายการเพิ่มสมาชิกเรียบร้อยแล้วทั้งหมด ${totalToAdd} บัญชีเข้ากลุ่ม "${adminVerification.title}"`);
+        setMsg(`ทำรายการเพิ่มสมาชิกเรียบร้อยแล้วทั้งหมด ${totalToAdd} บัญชีเข้ากลุ่ม "${adminVerification.title}"`);
         addWorkLog({
           type: 'เพิ่มสมาชิก (Add Member)',
           target: `${adminVerification.title} (${selectedGroupLink})`,
@@ -567,6 +567,22 @@ export function AddMembers() {
                     </span>
                   )}
                 </div>
+
+                {!adminVerification.isAdmin && (
+                  <div className="mt-3 pt-3 border-t border-rose-500/20 flex flex-col sm:flex-row items-center justify-between gap-2 bg-rose-500/5 p-2 rounded">
+                    <span className="text-[11px] text-gray-300">
+                      ไม่เป็นแอดมินกลุ่มนี้ แต่คุณสามารถดึงข้อมูลสมาชิกออกมาเป็นไฟล์ CSV ได้โดยไม่ต้องรออนุมัติ:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => navigateToExtractGroup(selectedGroupLink || customGroupInput)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold px-3 py-1.5 rounded transition-colors whitespace-nowrap flex items-center gap-1.5 shadow"
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      สลับไปที่ 'ดึงข้อมูลกลุ่ม' เพื่อสกัดเป็น CSV
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -709,13 +725,13 @@ export function AddMembers() {
               <p 
                 key={index} 
                 className={
-                  log.includes('✔') 
+                  log.includes('สำเร็จ') 
                     ? 'text-emerald-400' 
-                    : log.includes('🛡️') 
+                    : log.includes('ตรวจสอบ') 
                     ? 'text-blue-400 font-semibold' 
-                    : log.includes('👑')
+                    : log.includes('ตรวจพบ')
                     ? 'text-amber-300 font-semibold'
-                    : log.includes('❌') || log.includes('⛔')
+                    : log.includes('ไม่อนุญาต') || log.includes('ข้อผิดพลาด')
                     ? 'text-rose-400 font-bold'
                     : 'text-gray-300'
                 }

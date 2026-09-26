@@ -150,10 +150,12 @@ export function ProfileSearch() {
                     <div className="flex items-center gap-2">
                       <h3 className="text-lg font-bold text-white">{profileResult.name}</h3>
                       {profileResult.isVerified && <span className="bg-blue-500/20 text-blue-400 text-[10px] px-2 py-0.5 rounded font-medium">Verified</span>}
-                      {profileResult.isScam && <span className="bg-red-500/20 text-red-400 text-[10px] px-2 py-0.5 rounded font-medium">⚠️ SCAM REPORTED</span>}
+                      {profileResult.isScam && <span className="bg-red-500/20 text-red-400 text-[10px] px-2 py-0.5 rounded font-medium">SCAM REPORTED</span>}
                     </div>
                     <p className="text-sm text-blue-400 font-mono mt-0.5">{profileResult.username}</p>
-                    <p className="text-xs text-gray-500 mt-1">ID: <span className="text-gray-300 font-mono">{profileResult.id}</span> | {profileResult.phone}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      ID: <span className="text-gray-300 font-mono">TG-{profileResult.id.slice(-4)}</span> | <span className="text-gray-400 italic">[ซ่อนข้อมูลเชิงลึกส่วนบุคคล]</span>
+                    </p>
                   </div>
                 </div>
                 <button 
@@ -196,8 +198,9 @@ export function ProfileSearch() {
                   <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">กลุ่มส่วนกลางที่พบร่วมกัน (Mutual Groups)</h4>
                   <div className="flex flex-wrap gap-2">
                     {profileResult.mutualGroups.map((group: string, idx: number) => (
-                      <span key={idx} className="bg-[#252525] text-gray-300 border border-[#383838] px-2.5 py-1 rounded text-xs">
-                        👥 {group}
+                      <span key={idx} className="bg-[#252525] text-gray-300 border border-[#383838] px-2.5 py-1 rounded text-xs flex items-center gap-1">
+                        <Users className="w-3 h-3 text-blue-400" />
+                        <span>{group}</span>
                       </span>
                     ))}
                   </div>
@@ -405,7 +408,7 @@ export function ProgramSettings() {
   };
 
   const handleTestNotification = (channel: string) => {
-    setSavedMsg(`✔ ทดสอบส่งแจ้งเตือนผ่าน ${channel} สำเร็จ!`);
+    setSavedMsg(`ทดสอบส่งแจ้งเตือนผ่าน ${channel} สำเร็จ!`);
     addWorkLog({
       type: 'ทดสอบแจ้งเตือน',
       target: channel,
@@ -727,7 +730,7 @@ export function Manual() {
 
           <div className="p-5 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/30 rounded-lg text-xs">
             <h4 className="font-bold text-yellow-400 mb-1 flex items-center gap-2">
-              <span>⚠️</span>
+              <AlertTriangle className="w-4 h-4 text-yellow-400" />
               คำเตือนความปลอดภัยลิขสิทธิ์
             </h4>
             <p className="text-gray-300 leading-relaxed">
@@ -742,6 +745,14 @@ export function Manual() {
 
 // --- 5. About (เกี่ยวกับโปรแกรม) ---
 export function About() {
+  const { licenseData } = useAppContext();
+
+  const expireDateString = licenseData?.expiresAt 
+    ? new Date(licenseData.expiresAt).toLocaleDateString('th-TH', {
+        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      })
+    : '-';
+
   return (
     <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#121212] text-gray-300 p-6">
       <div className="flex items-center justify-between mb-6">
@@ -764,14 +775,35 @@ export function About() {
           Version 2.5.0-PRO (PSAistudio Edition)
         </p>
 
-        <div className="w-full bg-[#121212] border border-[#333] rounded-lg p-4 mb-6 text-left space-y-2 text-xs">
+        <div className="w-full bg-[#121212] border border-[#333] rounded-lg p-4 mb-6 text-left space-y-2.5 text-xs">
           <div className="flex justify-between border-b border-[#222] pb-2">
             <span className="text-gray-500">ผู้พัฒนา (Developer):</span>
             <span className="text-gray-200 font-semibold">PSAistudio Official</span>
           </div>
           <div className="flex justify-between border-b border-[#222] pb-2">
             <span className="text-gray-500">สถานะใบอนุญาต (License):</span>
-            <span className="text-green-400 font-semibold">✔ Verified Genuine Product</span>
+            <span className="text-emerald-400 font-semibold flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+              {licenseData?.isExpired ? 'หมดอายุแล้ว (Expired)' : 'เปิดใช้งานแล้ว (Active 30 Days)'}
+            </span>
+          </div>
+          <div className="flex justify-between border-b border-[#222] pb-2">
+            <span className="text-gray-500">เวลาใช้งานคงเหลือ (Remaining):</span>
+            <span className="text-cyan-300 font-mono font-bold">
+              {licenseData ? (
+                `${licenseData.formattedTime.days} วัน ${licenseData.formattedTime.hours} ชม. ${licenseData.formattedTime.minutes} นาที ${licenseData.formattedTime.seconds} วินาที`
+              ) : (
+                'กำลังโหลด...'
+              )}
+            </span>
+          </div>
+          <div className="flex justify-between border-b border-[#222] pb-2">
+            <span className="text-gray-500">วันหมดอายุ (Expiry Date):</span>
+            <span className="text-gray-300 font-mono">{expireDateString}</span>
+          </div>
+          <div className="flex justify-between border-b border-[#222] pb-2">
+            <span className="text-gray-500">รหัสใบอนุญาต (License ID):</span>
+            <span className="text-gray-400 font-mono">{licenseData?.licenseId || '-'}</span>
           </div>
           <div className="flex justify-between border-b border-[#222] pb-2">
             <span className="text-gray-500">ไลน์ไอดีทางการ (Official Line):</span>
@@ -783,9 +815,12 @@ export function About() {
           </div>
         </div>
 
-        <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-lg text-xs text-yellow-300 mb-6 leading-relaxed text-left w-full">
-          <strong>⚠️ ประกาศเตือนภัยของแท้:</strong><br />
-          นี่คือระบบจาก PSAistudio หากท่านได้ระบบนี้จากที่อื่นแสดงว่าอาจกำลังถูกหลอก ถ้าต้องการระบบนี้จริงๆต้องติดต่อ Line ID: <strong>@255yxtaf</strong> เท่านั้น
+        <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-lg text-xs text-yellow-300 mb-6 leading-relaxed text-left w-full flex items-start gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
+          <div>
+            <strong className="text-yellow-400 block mb-0.5">ประกาศเตือนภัยของแท้:</strong>
+            นี่คือระบบจาก PSAistudio หากท่านได้ระบบนี้จากที่อื่นแสดงว่าอาจกำลังถูกหลอก ถ้าต้องการระบบนี้จริงๆต้องติดต่อ Line ID: <strong>@255yxtaf</strong> เท่านั้น
+          </div>
         </div>
 
         <p className="text-[11px] text-gray-600">

@@ -1,13 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, RefreshCw } from 'lucide-react';
+import { 
+  ChevronDown, RefreshCw, Star, Image, MessageSquare, 
+  Phone, ArrowRight, ShieldCheck, Lock, EyeOff, Check
+} from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { TelegramIcon } from './TelegramIcon';
 
 export function ExtractData() {
-  const { addWorkLog, sessions, addSession, toggleSelectSession } = useAppContext();
-  const [link, setLink] = useState('');
+  const { 
+    addWorkLog, 
+    sessions, 
+    addSession, 
+    toggleSelectSession,
+    extractPrefillLink,
+    setActiveMenu 
+  } = useAppContext();
+  const [link, setLink] = useState(extractPrefillLink || '');
   const [checking, setChecking] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
+
+  useEffect(() => {
+    if (extractPrefillLink) {
+      setLink(extractPrefillLink);
+    }
+  }, [extractPrefillLink]);
   
   const [extracting, setExtracting] = useState(false);
   const [results, setResults] = useState<any[]>([]);
@@ -20,6 +36,9 @@ export function ExtractData() {
   const [filterHasAvatar, setFilterHasAvatar] = useState(false);
   const [filterHasUsername, setFilterHasUsername] = useState(false);
   const [filterHasPhone, setFilterHasPhone] = useState(false);
+  
+  // Member in-depth privacy protection (Do not display in-depth info to members)
+  const [protectMemberDetails, setProtectMemberDetails] = useState(true);
 
   const [newPhoneInput, setNewPhoneInput] = useState('');
   const [showAddAccountModal, setShowAddAccountModal] = useState(false);
@@ -138,11 +157,17 @@ export function ExtractData() {
       return;
     }
     
-    const headers = ["User ID", "Username", "ชื่อจริง", "นามสกุล", "เบอร์โทร", "ออนไลน์ล่าสุด"];
+    const headers = protectMemberDetails 
+      ? ["Username", "ชื่อจริง", "นามสกุล", "สถานะออนไลน์"]
+      : ["User ID", "Username", "ชื่อจริง", "นามสกุล", "เบอร์โทร", "ออนไลน์ล่าสุด"];
+
     const csvContent = [
       headers.join(","),
       ...displayedResults.map(row => 
-        [row.id, row.username, row.firstName, row.lastName, row.phone, row.lastOnline]
+        (protectMemberDetails 
+          ? [row.username, row.firstName, row.lastName, row.lastOnline]
+          : [row.id, row.username, row.firstName, row.lastName, row.phone, row.lastOnline]
+        )
           .map(value => `"${value || ''}"`)
           .join(",")
       )
@@ -169,6 +194,17 @@ export function ExtractData() {
             <button onClick={() => setErrorMsg('')} className="text-red-400 hover:text-red-300">×</button>
           </div>
         )}
+        {/* Scraping Policy Card */}
+        <div className="mb-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-xs text-blue-200 flex items-start gap-2.5">
+          <TelegramIcon className="w-4 h-4 shrink-0 mt-0.5 text-blue-400" />
+          <div className="flex-1">
+            <span className="font-bold text-white">การดึงข้อมูลสมาชิก (Scraping Policy): </span>
+            <span className="text-gray-300">
+              คุณสามารถสกัดรายชื่อสมาชิกจากกลุ่มสาธารณะหรือกลุ่มใดก็ได้ตามต้องการ <strong className="text-emerald-400">โดยไม่จำเป็นต้องเป็นแอดมินหรือรอแอดมินอนุมัติ</strong> ข้อมูลที่สกัดได้จะสามารถบันทึกและส่งออกเป็นไฟล์ CSV ได้ทันที (หากต้องการนำรายชื่อไปเพิ่มเข้ากลุ่ม ต้องใช้กลุ่มที่คุณเป็นแอดมินเท่านั้น)
+            </span>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 h-full">
           
           {/* Left Column */}
@@ -382,45 +418,67 @@ export function ExtractData() {
                   </div>
                 </div>
 
-                {/* Advanced Filters */}
-                <div className="bg-[#121212] p-3 border border-[#333] rounded-lg">
-                  <h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2">ระบบกรองสมาชิกขั้นสูง (Advanced Member Filters)</h3>
+                {/* Advanced Filters & Member Privacy Protection */}
+                <div className="bg-[#121212] p-3 border border-[#333] rounded-lg space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#2a2a2a] pb-2">
+                    <h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider">ระบบกรองสมาชิกขั้นสูง</h3>
+                    
+                    {/* Privacy toggle honoring "ไม่แสดงข้อมูลเชิงลึกต่อสมาชิก" */}
+                    <button
+                      type="button"
+                      onClick={() => setProtectMemberDetails(!protectMemberDetails)}
+                      className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition-colors border ${
+                        protectMemberDetails
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                          : 'bg-[#252525] text-gray-400 border-[#444]'
+                      }`}
+                      title="คลิกเพื่อสลับการปกป้องข้อมูลเชิงลึกของสมาชิก"
+                    >
+                      {protectMemberDetails ? <Lock className="w-3 h-3 text-emerald-400" /> : <EyeOff className="w-3 h-3 text-gray-400" />}
+                      <span>{protectMemberDetails ? 'ซ่อนข้อมูลเชิงลึกต่อสมาชิก (Active)' : 'แสดงข้อมูลทั้งหมด'}</span>
+                    </button>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <label className="flex items-center gap-2 text-gray-300 cursor-pointer hover:text-white">
                       <input 
-                        type="checkbox"
+                        type="checkbox" 
                         checked={filterPremiumOnly}
                         onChange={(e) => setFilterPremiumOnly(e.target.checked)}
                         className="rounded border-[#444] bg-[#252525] text-blue-500 focus:ring-blue-500"
                       />
-                      <span>⭐ Telegram Premium</span>
+                      <Star className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>Telegram Premium</span>
                     </label>
                     <label className="flex items-center gap-2 text-gray-300 cursor-pointer hover:text-white">
                       <input 
-                        type="checkbox"
+                        type="checkbox" 
                         checked={filterHasAvatar}
                         onChange={(e) => setFilterHasAvatar(e.target.checked)}
                         className="rounded border-[#444] bg-[#252525] text-blue-500 focus:ring-blue-500"
                       />
-                      <span>🖼️ มีรูปโปรไฟล์</span>
+                      <Image className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      <span>มีรูปโปรไฟล์</span>
                     </label>
                     <label className="flex items-center gap-2 text-gray-300 cursor-pointer hover:text-white">
                       <input 
-                        type="checkbox"
+                        type="checkbox" 
                         checked={filterHasUsername}
                         onChange={(e) => setFilterHasUsername(e.target.checked)}
                         className="rounded border-[#444] bg-[#252525] text-blue-500 focus:ring-blue-500"
                       />
-                      <span>💬 มี Username (@)</span>
+                      <MessageSquare className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      <span>มี Username (@)</span>
                     </label>
                     <label className="flex items-center gap-2 text-gray-300 cursor-pointer hover:text-white">
                       <input 
-                        type="checkbox"
+                        type="checkbox" 
                         checked={filterHasPhone}
                         onChange={(e) => setFilterHasPhone(e.target.checked)}
                         className="rounded border-[#444] bg-[#252525] text-blue-500 focus:ring-blue-500"
                       />
-                      <span>📱 มีเบอร์โทรศัพท์</span>
+                      <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>มีเบอร์โทรศัพท์</span>
                     </label>
                   </div>
                 </div>
@@ -443,7 +501,14 @@ export function ExtractData() {
             {/* Results Panel */}
             <div className="bg-[#1e1e1e] border border-[#333] rounded-lg flex flex-col flex-1 min-h-[200px]">
               <div className="p-3 border-b border-[#333] flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-blue-400">3. ผลลัพธ์ (กรองพบ: {displayedResults.length} / รวม {results.length} รายการ)</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-blue-400">3. ผลลัพธ์ (กรองพบ: {displayedResults.length} / รวม {results.length} รายการ)</h2>
+                  {protectMemberDetails && (
+                    <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-mono flex items-center gap-1">
+                      <Lock className="w-3 h-3" /> ซ่อนข้อมูลเชิงลึกต่อสมาชิก
+                    </span>
+                  )}
+                </div>
                 <button 
                   onClick={() => setAutoRefresh(!autoRefresh)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
@@ -466,7 +531,9 @@ export function ExtractData() {
                       <th className="px-4 py-2 font-medium">Username</th>
                       <th className="px-4 py-2 font-medium">ชื่อจริง</th>
                       <th className="px-4 py-2 font-medium">นามสกุล</th>
-                      <th className="px-4 py-2 font-medium">เบอร์โทร</th>
+                      <th className="px-4 py-2 font-medium">
+                        {protectMemberDetails ? 'เบอร์โทร (ซ่อนเชิงลึก)' : 'เบอร์โทร'}
+                      </th>
                       <th className="px-4 py-2 font-medium">ออนไลน์ล่าสุด</th>
                     </tr>
                   </thead>
@@ -490,11 +557,21 @@ export function ExtractData() {
                           }}
                           title="คลิกเพื่อคัดลอก Username"
                         >
-                          <td className="px-4 py-2 font-mono text-xs text-gray-400 group-hover:text-white">{row.id}</td>
+                          <td className="px-4 py-2 font-mono text-xs text-gray-400 group-hover:text-white">
+                            {protectMemberDetails ? `TG-USR-${String(row.id).slice(-4)}` : row.id}
+                          </td>
                           <td className="px-4 py-2 text-blue-400 font-medium group-hover:underline">{row.username}</td>
                           <td className="px-4 py-2 text-gray-200">{row.firstName}</td>
                           <td className="px-4 py-2 text-gray-300">{row.lastName}</td>
-                          <td className="px-4 py-2 font-mono text-xs text-gray-400">{row.phone}</td>
+                          <td className="px-4 py-2 font-mono text-xs text-gray-400">
+                            {protectMemberDetails ? (
+                              <span className="text-gray-500 italic bg-[#1c1c1c] px-1.5 py-0.5 rounded border border-[#2c2c2c] text-[10px]">
+                                [สงวนสิทธิ์ข้อมูลเชิงลึก]
+                              </span>
+                            ) : (
+                              row.phone
+                            )}
+                          </td>
                           <td className="px-4 py-2 text-gray-400 text-xs">{row.lastOnline}</td>
                         </tr>
                       ))
@@ -514,8 +591,18 @@ export function ExtractData() {
                   <button className="bg-[#333] hover:bg-[#444] text-white px-3 py-1.5 rounded text-xs transition-colors">
                     ตรวจสอบข้อมูลซ้ำ
                   </button>
-                  <button onClick={handleDownloadCSV} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs transition-colors">
-                    ส่งออกเป็น CSV
+                  <button onClick={handleDownloadCSV} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs transition-colors flex items-center gap-1 font-medium">
+                    <span>ส่งออกเป็น CSV</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      handleDownloadCSV();
+                      setActiveMenu('add-members');
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-xs transition-colors flex items-center gap-1 font-medium"
+                    title="บันทึกไฟล์ CSV และนำไปหน้าเพิ่มสมาชิกเข้ากลุ่มของคุณ"
+                  >
+                    <span>บันทึก CSV & ไปหน้าเพิ่มสมาชิก</span>
                   </button>
                 </div>
               </div>

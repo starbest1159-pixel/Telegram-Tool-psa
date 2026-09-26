@@ -52,7 +52,7 @@ export function SendMessages() {
     setLoading(true);
     setProgress(0);
     setMsgStatus('');
-    setLogs(['🚀 เริ่มต้นส่งข้อความบรอดแคสต์แบบอัตโนมัติ...']);
+    setLogs(['เริ่มต้นส่งข้อความบรอดแคสต์แบบอัตโนมัติ...']);
 
     let current = 0;
     const updatedTargets = [...targets];
@@ -61,7 +61,7 @@ export function SendMessages() {
       if (current >= updatedTargets.length) {
         clearInterval(interval);
         setLoading(false);
-        setMsgStatus('✨ ส่งข้อความบรอดแคสต์เสร็จสิ้นทุกรายการ!');
+        setMsgStatus('ส่งข้อความบรอดแคสต์เสร็จสิ้นทุกรายการ!');
         addWorkLog({
           type: 'ส่งข้อความ (Send Message)',
           target: `${targets.length} รายการ`,
@@ -71,7 +71,7 @@ export function SendMessages() {
         return;
       }
 
-      updatedTargets[current].status = 'ส่งสำเร็จ ✔';
+      updatedTargets[current].status = 'ส่งสำเร็จ';
       setTargets([...updatedTargets]);
 
       current += 1;
@@ -79,7 +79,7 @@ export function SendMessages() {
       setProgress(pct);
 
       setLogs(prev => [
-        `✔ ส่งหา ${updatedTargets[current - 1].id} สำเร็จ [Delay: ${Math.floor(Number(delayMin) + Math.random() * 5)}s]`,
+        `ส่งหา ${updatedTargets[current - 1].id} สำเร็จ [Delay: ${Math.floor(Number(delayMin) + Math.random() * 5)}s]`,
         ...prev
       ]);
     }, 1200);
@@ -255,7 +255,7 @@ export function SendMessages() {
             {logs.length === 0 ? (
               <p className="text-gray-600 italic">พร้อมส่งข้อความ...</p>
             ) : (
-              logs.map((l, idx) => <p key={idx} className={l.includes('✔') ? 'text-green-400' : 'text-blue-400'}>{l}</p>)
+              logs.map((l, idx) => <p key={idx} className={l.includes('สำเร็จ') ? 'text-green-400' : 'text-blue-400'}>{l}</p>)
             )}
           </div>
         </div>

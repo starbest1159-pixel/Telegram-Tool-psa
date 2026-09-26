@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Globe, UserPlus, Users, Search, Send, 
   UserSquare, Clock, Settings, BookOpen, 
-  Info, LogOut, MonitorStop
+  Info, LogOut, MonitorStop, AlertTriangle, AlertCircle
 } from 'lucide-react';
 import { AppState, MenuKey } from './types';
 import { ExtractData } from './components/ExtractData';
@@ -11,7 +11,7 @@ import { AddMembers } from './components/AddMembers';
 import { SearchGroups } from './components/SearchGroups';
 import { SendMessages } from './components/SendMessages';
 import { ProfileSearch, WorkHistory, ProgramSettings, Manual, About } from './components/MiscViews';
-import { AppProvider } from './context/AppContext';
+import { AppProvider, useAppContext } from './context/AppContext';
 import { TelegramIcon } from './components/TelegramIcon';
 
 // --- Login Component ---
@@ -23,14 +23,14 @@ function Login({ onLogin }: { onLogin: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username && password) {
+    if (username.trim() && password.trim()) {
       setLoading(true);
       setError('');
       try {
         const response = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+          body: JSON.stringify({ username: username.trim(), password: password.trim() })
         });
         const data = await response.json();
         
@@ -52,13 +52,13 @@ function Login({ onLogin }: { onLogin: () => void }) {
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
       <div className="bg-[#1c1c1c] p-8 rounded-xl border border-[#333] w-full max-w-md shadow-2xl">
-        <div className="flex items-center justify-center mb-8 gap-3">
+        <div className="flex items-center justify-center mb-6 gap-3">
           <TelegramIcon className="w-8 h-8" />
           <h1 className="text-2xl font-bold text-white">ระบบจัดการ Telegram</h1>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <div className="text-red-500 text-sm bg-red-500/10 p-3 rounded">{error}</div>}
+          {error && <div className="text-red-500 text-sm bg-red-500/10 border border-red-500/30 p-3 rounded">{error}</div>}
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-1">ยูสเซอร์เนม (Username)</label>
             <input 
@@ -78,12 +78,11 @@ function Login({ onLogin }: { onLogin: () => void }) {
               className="w-full bg-[#121212] border border-[#333] text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
               placeholder="กรอกรหัสผ่าน"
             />
-            <p className="text-xs text-blue-400 mt-1">💡 รหัสผ่านคงที่ระบบ: <span className="font-mono bg-blue-950 px-1.5 py-0.5 rounded text-blue-300">psaistudio</span></p>
           </div>
           <button 
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg transition-colors mt-6"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg transition-colors mt-6 cursor-pointer shadow-md"
           >
             {loading ? 'กำลังตรวจสอบ...' : 'เข้าสู่ระบบ (Login)'}
           </button>
@@ -111,8 +110,8 @@ function WarningModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fadeIn">
       <div className="bg-[#1e1e1e] border border-yellow-500/40 rounded-xl p-6 max-w-md w-full shadow-2xl relative text-center">
-        <div className="w-12 h-12 bg-yellow-500/20 text-yellow-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
-          ⚠️
+        <div className="w-12 h-12 bg-yellow-500/20 text-yellow-400 rounded-full flex items-center justify-center mx-auto mb-4">
+          <AlertTriangle className="w-6 h-6 text-yellow-400" />
         </div>
         <h3 className="text-lg font-bold text-yellow-400 mb-3">ประกาศสำคัญจาก PSAistudio</h3>
         <p className="text-gray-300 text-sm leading-relaxed mb-6 bg-[#121212] p-4 rounded-lg border border-[#333]">
@@ -140,6 +139,7 @@ function Sidebar({
   onMenuChange: (key: MenuKey) => void;
   onLogout: () => void; 
 }) {
+  const { licenseData } = useAppContext();
   const menuItems: { icon: any; label: string; key: MenuKey; keynum: string }[] = [
     { icon: Globe, label: 'ตั้งค่า Proxy', key: 'proxy', keynum: '1' },
     { icon: UserPlus, label: 'เพิ่มสมาชิกเข้ากลุ่ม', key: 'add-members', keynum: '2' },
@@ -232,6 +232,27 @@ function Sidebar({
         </ul>
       </div>
 
+      {/* 30-Day License Mini Indicator in Sidebar */}
+      <div className="p-3 mx-2 mb-2 bg-[#141414] border border-[#2d2d2d] rounded-lg text-xs">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">อายุใช้งาน 30 วัน</span>
+          <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono ${
+            licenseData?.isExpired ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+          }`}>
+            {licenseData?.isExpired ? 'EXPIRED' : 'ACTIVE'}
+          </span>
+        </div>
+        <div className="text-cyan-300 font-mono text-xs font-bold flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+          <span>
+            {licenseData 
+              ? `${licenseData.formattedTime.days} วัน ${licenseData.formattedTime.hours} ชม. ${licenseData.formattedTime.minutes}น.`
+              : '30 วัน 00 ชม.'}
+          </span>
+        </div>
+        <p className="text-[9px] text-gray-500 mt-1">เริ่มนับทันที • ล็อคเวลาบนเซิร์ฟเวอร์</p>
+      </div>
+
       <div className="p-3 border-t border-[#333] bg-[#1a1a1a]">
         <button 
           onClick={onLogout}
@@ -266,44 +287,113 @@ function MainContent({ activeMenu }: { activeMenu: MenuKey }) {
   }
 }
 
+// --- Dashboard Component (Inside AppProvider) ---
+function Dashboard({ onLogout }: { onLogout: () => void }) {
+  const { activeMenu, setActiveMenu, licenseData } = useAppContext();
+  const [showWarning, setShowWarning] = useState(true);
+
+  const expireDateString = licenseData?.expiresAt 
+    ? new Date(licenseData.expiresAt).toLocaleDateString('th-TH', {
+        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      })
+    : 'กำลังโหลด...';
+
+  return (
+    <div className="flex flex-col h-screen overflow-hidden bg-[#0a0a0a] selection:bg-blue-500/30">
+      {showWarning && <WarningModal onClose={() => setShowWarning(false)} />}
+      
+      {/* 30-Day Real-Time Countdown License Header Bar */}
+      <div className="bg-[#141414] border-b border-[#2d2d2d] px-4 py-2 flex flex-wrap items-center justify-between gap-3 z-40 select-none shadow-md">
+        <div className="flex items-center gap-2.5 text-xs">
+          <div className="flex items-center gap-1.5">
+            <span className={`w-2.5 h-2.5 rounded-full ${licenseData?.isExpired ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`} />
+            <span className="text-gray-300 font-semibold">อายุการใช้งานระบบ (30 วัน):</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 font-mono bg-[#1c1c1c] border border-[#383838] px-3 py-1 rounded-lg text-white shadow-inner">
+            <Clock className="w-3.5 h-3.5 text-cyan-400" />
+            {licenseData ? (
+              licenseData.isExpired ? (
+                <span className="text-rose-400 font-bold">หมดอายุแล้ว (Expired)</span>
+              ) : (
+                <span className="text-cyan-300 font-bold tracking-wide">
+                  {licenseData.formattedTime.days} วัน {licenseData.formattedTime.hours} ชม. {licenseData.formattedTime.minutes} นาที {licenseData.formattedTime.seconds} วินาที
+                </span>
+              )
+            ) : (
+              <span className="text-gray-400 text-[11px]">กำลังเชื่อมต่อ API...</span>
+            )}
+          </div>
+
+          <span className="text-[11px] text-gray-400 hidden lg:inline">
+            (เริ่มนับถอยหลังทันที • หมดอายุ: <strong className="text-gray-200">{expireDateString}</strong> • API ทำงานตลอดเวลา ไม่เริ่มนับใหม่)
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-semibold ${
+            licenseData?.isExpired 
+              ? 'bg-red-500/10 text-red-400 border border-red-500/30' 
+              : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+          }`}>
+            {licenseData?.isExpired ? 'EXPIRED' : 'ACTIVE 30D'}
+          </span>
+          <span className="text-xs text-yellow-400/90 font-medium hidden md:inline">
+            ไลน์ไอดี: <strong className="text-white">@255yxtaf</strong>
+          </span>
+          <button 
+            onClick={() => setShowWarning(true)} 
+            className="text-[11px] bg-[#222] hover:bg-[#2e2e2e] text-yellow-300 px-2.5 py-1 rounded border border-yellow-500/30 transition-colors"
+          >
+            ประกาศระบบ
+          </button>
+        </div>
+      </div>
+
+      {/* Warning Notice if Expired */}
+      {licenseData?.isExpired && (
+        <div className="bg-rose-500/20 border-b border-rose-500/40 px-4 py-2 text-xs text-rose-300 flex items-center justify-between z-30">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>สิทธิ์การใช้งานระบบ 30 วันสิ้นสุดลงแล้ว กรุณาติดต่อต่ออายุสิทธิ์ผ่านไลน์ <strong>@255yxtaf</strong> เพื่อใช้งานต่อ</span>
+          </div>
+          <a href="https://line.me" target="_blank" rel="noreferrer" className="text-xs bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-0.5 rounded">
+            ต่ออายุการใช้งาน
+          </a>
+        </div>
+      )}
+
+      {/* Permanent Watermark / Notice */}
+      <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-1.5 text-xs text-yellow-300 flex items-center justify-between z-30 select-none">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+          <span>นี่คือระบบจาก <strong>PSAistudio</strong> หากท่านได้ระบบนี้จากที่อื่นแสดงว่าอาจกำลังถูกหลอก ถ้าต้องการระบบนี้จริงๆต้อง ไลน์ไอดี <strong className="text-white underline">@255yxtaf</strong> เท่านั้น</span>
+        </div>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar 
+          activeMenu={activeMenu} 
+          onMenuChange={setActiveMenu} 
+          onLogout={onLogout} 
+        />
+        <MainContent activeMenu={activeMenu} />
+      </div>
+    </div>
+  );
+}
+
 // --- Main App ---
 export default function App() {
   const [appState, setAppState] = useState<AppState>('login');
-  const [activeMenu, setActiveMenu] = useState<MenuKey>('extract-data');
-  const [showWarning, setShowWarning] = useState(true);
 
   if (appState === 'login') {
-    return <Login onLogin={() => { setAppState('dashboard'); setShowWarning(true); }} />;
+    return <Login onLogin={() => setAppState('dashboard')} />;
   }
 
   return (
     <AppProvider>
-      <div className="flex flex-col h-screen overflow-hidden bg-[#0a0a0a] selection:bg-blue-500/30">
-        {showWarning && <WarningModal onClose={() => setShowWarning(false)} />}
-        
-        {/* Permanent Watermark / Banner */}
-        <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-1.5 text-xs text-yellow-300 flex items-center justify-between z-40 select-none">
-          <div className="flex items-center gap-2">
-            <span>⚠️</span>
-            <span>นี่คือระบบจาก <strong>PSAistudio</strong> หากท่านได้ระบบนี้จากที่อื่นแสดงว่าอาจกำลังถูกหลอก ถ้าต้องการระบบนี้จริงๆต้อง ไลน์ไอดี <strong className="text-white underline">@255yxtaf</strong> เท่านั้น</span>
-          </div>
-          <button 
-            onClick={() => setShowWarning(true)} 
-            className="text-[10px] bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-200 px-2 py-0.5 rounded transition-colors"
-          >
-            แสดงประกาศ
-          </button>
-        </div>
-
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar 
-            activeMenu={activeMenu} 
-            onMenuChange={setActiveMenu} 
-            onLogout={() => setAppState('login')} 
-          />
-          <MainContent activeMenu={activeMenu} />
-        </div>
-      </div>
+      <Dashboard onLogout={() => setAppState('login')} />
     </AppProvider>
   );
 }

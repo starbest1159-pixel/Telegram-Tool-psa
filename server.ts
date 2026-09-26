@@ -1,22 +1,206 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
+
+// Persistent 30-Day License Management
+const LICENSE_FILE = path.join(process.cwd(), "license_data.json");
+const USER_CREDENTIALS_FILE = path.join(process.cwd(), "user_credentials.json");
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+interface StoredLicense {
+  licenseId: string;
+  plan: string;
+  isActivated: boolean;
+  activatedAt: number | null;
+  expiresAt: number | null;
+  durationDays: number;
+  supportContact: string;
+  firstLoginUser?: string | null;
+}
+
+function getStoredUser() {
+  if (fs.existsSync(USER_CREDENTIALS_FILE)) {
+    try {
+      const content = fs.readFileSync(USER_CREDENTIALS_FILE, "utf-8");
+      return JSON.parse(content);
+    } catch (err) {
+      console.error("Failed to read user credentials file", err);
+    }
+  }
+  return {
+    username: "psa_user_8721",
+    password: "PSA-78b9v2",
+    role: "PSA Owner / License Holder",
+    plan: "30-Day Enterprise Pass"
+  };
+}
+
+function saveLicense(license: StoredLicense) {
+  try {
+    fs.writeFileSync(LICENSE_FILE, JSON.stringify(license, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Failed to write license file", err);
+  }
+}
+
+function getOrCreateLicense(): StoredLicense {
+  if (fs.existsSync(LICENSE_FILE)) {
+    try {
+      const content = fs.readFileSync(LICENSE_FILE, "utf-8");
+      const parsed = JSON.parse(content);
+      if (parsed && typeof parsed.licenseId === "string") {
+        return {
+          licenseId: parsed.licenseId,
+          plan: parsed.plan || "PSA Enterprise 30-Day Pass (PRO Edition)",
+          isActivated: Boolean(parsed.isActivated),
+          activatedAt: typeof parsed.activatedAt === "number" ? parsed.activatedAt : null,
+          expiresAt: typeof parsed.expiresAt === "number" ? parsed.expiresAt : null,
+          durationDays: parsed.durationDays || 30,
+          supportContact: parsed.supportContact || "@255yxtaf",
+          firstLoginUser: parsed.firstLoginUser || null
+        };
+      }
+    } catch (err) {
+      console.error("Failed to read license file, reinitializing", err);
+    }
+  }
+
+  // Not yet activated: clock starts ONLY after first login!
+  const newLicense: StoredLicense = {
+    licenseId: "PSA-30D-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
+    plan: "PSA Enterprise 30-Day Pass (PRO Edition)",
+    isActivated: false,
+    activatedAt: null,
+    expiresAt: null,
+    durationDays: 30,
+    supportContact: "@255yxtaf",
+    firstLoginUser: null
+  };
+
+  saveLicense(newLicense);
+  return newLicense;
+}
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Initialize license status check
+  getOrCreateLicense();
+
   app.use(express.json());
 
   // API Routes
   
-  // Login
+  // 30-Day License Status Endpoint (Starts counting down ONLY after first login)
+  app.get("/api/license", (req, res) => {
+    const license = getOrCreateLicense();
+    const now = Date.now();
+
+    // If not activated yet, 30 days is kept 100% intact until the first login happens!
+    if (!license.isActivated || !license.expiresAt) {
+      return res.json({
+        success: true,
+        data: {
+          licenseId: license.licenseId,
+          plan: license.plan,
+          isActivated: false,
+          activatedAt: null,
+          expiresAt: null,
+          durationDays: license.durationDays,
+          remainingSeconds: license.durationDays * 24 * 3600,
+          isExpired: false,
+          formattedTime: {
+            days: 30,
+            hours: 0,
+            minutes: 0,
+            seconds: 0
+          },
+          supportContact: license.supportContact,
+          statusMessage: "รอการเข้าสู่ระบบครั้งแรกเพื่อเริ่มนับเวลา 30 วัน"
+        }
+      });
+    }
+
+    const remainingMs = Math.max(0, license.expiresAt - now);
+    const remainingSeconds = Math.floor(remainingMs / 1000);
+    const isExpired = remainingSeconds <= 0;
+
+    const days = Math.floor(remainingSeconds / (24 * 3600));
+    const hours = Math.floor((remainingSeconds % (24 * 3600)) / 3600);
+    const minutes = Math.floor((remainingSeconds % 3600) / 60);
+    const seconds = remainingSeconds % 60;
+
+    res.json({
+      success: true,
+      data: {
+        licenseId: license.licenseId,
+        plan: license.plan,
+        isActivated: true,
+        activatedAt: license.activatedAt,
+        expiresAt: license.expiresAt,
+        durationDays: license.durationDays,
+        remainingSeconds,
+        isExpired,
+        formattedTime: {
+          days,
+          hours,
+          minutes,
+          seconds,
+        },
+        supportContact: license.supportContact,
+        statusMessage: "เปิดใช้งานแล้ว (เริ่มนับถอยหลัง 30 วันตามเวลาจริง)"
+      }
+    });
+  });
+
+  // Login: verifies credentials and activates the 30-day countdown timer on first successful login
   app.post("/api/login", (req, res) => {
     const { username, password } = req.body;
-    if (username && (password === "psaistudio" || password === "psa255yxtaf" || password === "admin")) {
-      res.json({ success: true, token: "mock-jwt-token", message: "เข้าสู่ระบบสำเร็จ" });
+    const storedUser = getStoredUser();
+    const validPasswords = ["psaistudio", "demo2026", "psa255yxtaf", "admin"];
+
+    const isMatch = Boolean(
+      (username && username.trim().toLowerCase() === storedUser.username.toLowerCase() && password === storedUser.password) ||
+      (username && validPasswords.includes(password))
+    );
+
+    if (isMatch) {
+      const license = getOrCreateLicense();
+      let wasJustActivated = false;
+
+      // FIRST-TIME ACTIVATION TRIGGER: Starts the 30-day timer only when first login succeeds!
+      if (!license.isActivated || !license.expiresAt) {
+        license.isActivated = true;
+        license.activatedAt = Date.now();
+        license.expiresAt = Date.now() + THIRTY_DAYS_MS;
+        license.firstLoginUser = username.trim();
+        saveLicense(license);
+        wasJustActivated = true;
+      }
+
+      res.json({ 
+        success: true, 
+        token: "mock-jwt-token", 
+        message: wasJustActivated 
+          ? "เข้าสู่ระบบสำเร็จ (เริ่มนับเวลาใช้งาน 30 วันทันที)" 
+          : "เข้าสู่ระบบสำเร็จ",
+        wasJustActivated,
+        user: {
+          username: username.trim(),
+          role: "ผู้ใช้งานระบบ (License Holder)",
+          licenseDays: 30,
+          isActivated: license.isActivated,
+          activatedAt: license.activatedAt,
+          expiresAt: license.expiresAt
+        }
+      });
     } else {
-      res.status(401).json({ success: false, message: "รหัสผ่านไม่ถูกต้อง (รหัสผ่านคงที่คือ: psaistudio)" });
+      res.status(401).json({ 
+        success: false, 
+        message: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" 
+      });
     }
   });
 
@@ -94,7 +278,7 @@ async function startServer() {
           can_delete_messages: found.canDeleteMessages,
           can_change_info: found.canChangeInfo
         },
-        message: "✅ ตรวจสอบสิทธิ์สำเร็จ: คุณเป็นแอดมินกลุ่มนี้ มีสิทธิ์ดึงสมาชิกเข้ากลุ่มได้อย่างปลอดภัย"
+        message: "ตรวจสอบสิทธิ์สำเร็จ: คุณเป็นแอดมินกลุ่มนี้ มีสิทธิ์ดึงสมาชิกเข้ากลุ่มได้อย่างปลอดภัย"
       });
     }
 
@@ -107,7 +291,7 @@ async function startServer() {
         title: `กลุ่มที่ดูแล (${cleanLink})`,
         link: cleanLink.startsWith('t.me/') ? cleanLink : `t.me/${cleanLink.replace(/^@/, '')}`,
         role: "administrator",
-        roleLabel: "🛡️ ผู้ดูแลระบบ (Administrator)",
+        roleLabel: "ผู้ดูแลระบบ (Administrator)",
         canInviteUsers: true,
         canChangeInfo: false,
         canDeleteMessages: true,
@@ -132,7 +316,7 @@ async function startServer() {
           can_delete_messages: true,
           can_change_info: false
         },
-        message: "✅ ยืนยันสิทธิ์แอดมินสำเร็จ! เพิ่มกลุ่มนี้เข้าสู่คลังกลุ่มที่คุณดูแลแล้ว"
+        message: "ยืนยันสิทธิ์แอดมินสำเร็จ! เพิ่มกลุ่มนี้เข้าสู่คลังกลุ่มที่คุณดูแลแล้ว"
       });
     }
 
@@ -140,10 +324,11 @@ async function startServer() {
     return res.json({
       success: true,
       isAdmin: false,
+      canExtractToCsv: true,
       role: "member",
-      roleLabel: "👤 สมาชิกทั่วไป (Regular Member)",
+      roleLabel: "สมาชิกทั่วไป (Regular Member)",
       canInviteUsers: false,
-      title: `กลุ่มทั่วไป (${cleanLink})`,
+      title: `กลุ่มภายนอก (${cleanLink})`,
       link: cleanLink,
       memberCount: Math.floor(1000 + Math.random() * 15000),
       permissions: {
@@ -152,7 +337,7 @@ async function startServer() {
         can_delete_messages: false,
         can_change_info: false
       },
-      message: "❌ CHAT_ADMIN_REQUIRED: คุณไม่ได้เป็นแอดมินของกลุ่มนี้ ตามกฎของ Telegram คุณไม่สามารถเพิ่มสมาชิกเข้ากลุ่มของผู้อื่นได้"
+      message: "CHAT_ADMIN_REQUIRED: คุณไม่ได้เป็นแอดมินของกลุ่มนี้ ตามกฎเกณฑ์ Telegram คุณไม่สามารถเพิ่มสมาชิกเข้ากลุ่มของผู้อื่นได้ แต่คุณสามารถดึงข้อมูลสมาชิกกลุ่มนี้เพื่อส่งออกเป็นไฟล์ CSV ได้ที่เมนู 'ดึงข้อมูลกลุ่ม'"
     });
   });
 
