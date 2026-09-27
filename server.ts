@@ -29,9 +29,9 @@ function getStoredUser() {
     }
   }
   return {
-    username: "psa_user_8721",
-    password: "PSA-78b9v2",
-    role: "PSA Owner / License Holder",
+    username: "pkk88",
+    password: "0124578",
+    role: "Master Owner / License Holder",
     plan: "30-Day Enterprise Pass"
   };
 }
